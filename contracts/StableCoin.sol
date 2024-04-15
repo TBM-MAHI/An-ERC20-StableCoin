@@ -17,7 +17,7 @@ contract StableCoin is ERC20 {
         //depositor coin contract only becomes useful when people starts deposit extra ETH (leveraged trading)
         DepositorCoin depositorCoin;
         Oracle public oracle;
-        uint private feePercentage = 2;
+        uint public feePercentage;
         uint public initial_Collateral_Ratio_Percentage;
         uint public Depositor_Coin_LockTime;
 
@@ -28,11 +28,13 @@ contract StableCoin is ERC20 {
         string memory _name,
         string memory _symbol,
         uint _initial_Collateral_Ratio_Percentage,
+        uint _feePercentage,
         uint _locktime,
         Oracle oracle_contractAddress  // address of the contract
      ) ERC20(_name,_symbol)
      {
         initial_Collateral_Ratio_Percentage = _initial_Collateral_Ratio_Percentage;
+        feePercentage = _feePercentage;
         Depositor_Coin_LockTime = _locktime;
         oracle = oracle_contractAddress;
      }
