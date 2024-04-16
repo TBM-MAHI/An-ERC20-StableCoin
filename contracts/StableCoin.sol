@@ -1,21 +1,21 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+import {DepositorCoin} from "./DepositorCoin.sol";
+import {Oracle} from "./Oracle.sol";
 import {ERC20} from "./ERC20.sol";
+import "hardhat/console.sol";
 import {
     FixedPoint,
     formFraction, 
     multiplyWithFixedPoint,
     divFixedPoint
     } from "./Fixedpoint.sol";
-import {DepositorCoin} from "./DepositorCoin.sol";
-import {Oracle} from "./Oracle.sol";
-
 
 contract StableCoin is ERC20 {
         //Stablecoin is the Owner of the Depositor Coin
         //depositor coin contract only becomes useful when people starts deposit extra ETH (leveraged trading)
-        DepositorCoin depositorCoin;
+        DepositorCoin public depositorCoin;
         Oracle public oracle;
         uint public feePercentage;
         uint public initial_Collateral_Ratio_Percentage;
@@ -70,41 +70,59 @@ contract StableCoin is ERC20 {
         int deficit_or_surplus  = get_Surplus__OR__DeficitInUSD();
         /// @dev initial the surplus amount is 0; so in the first deposit we can set the deposited 
         /// @dev eth (converted to USD) As the initial/starting surplus amount
-
         if( deficit_or_surplus <= 0){
+            console.log("deficit_or_surplus");
+            console.logInt(deficit_or_surplus);
+
              /* in Our Example :
-         1 ETH = 1000 $USD
-         Total Depositor Coin  : 250 DPC
-           Total Stable Coin  : 1000STB ~ 1000$
-         Total Dollar amount in depositor pool/SURPLUS : 0$
-         price of 1 depositor Coin In USD/1DPC = total supply/ total DPC amount
-                                              = 250/500 = 0.5$
+            1 ETH = 1000 $USD
+            Total Depositor Coin  : 250 DPC
+            Total Stable Coin  : 1000STB ~ 1000$
+            Total Dollar amount in depositor pool/SURPLUS : 0$
+            price of 1 depositor Coin In USD/1DPC = total supply/ total DPC amount
+                                                = 250/500 = 0.5$
          */
             ///@notice deploy the DepositorCoin in 2 Criteria 
                     /// 1. initially when the surplus amount is Zero/empty
                     /// 2. When the pool is underwater or negative surplus 
             ///DEPLOYING WILL RESET THE TOTAL SUPPLY TO 0
-            uint required_minimum_surplus_In_USD = ( initial_Collateral_Ratio_Percentage/100 ) * totalSupply ;
-            
-            // Safety Margin : 25% of 1 ETH price  --> ( 25/100 * 1000) = 250 USD is the Safety Margin
+             /* 
+             Safety Margin : 25% of total Stable Coin supply --> ( 25/100 * 1000) = 250 USD is the Safety Margin  
+             */
+            uint required_minimum_surplus_In_USD = ( initial_Collateral_Ratio_Percentage * totalSupply) /100;
+             console.log(
+                " Total supply ",totalSupply
+            );
+            console.log(
+                "required_minimum_surplus_In_USD -> ",required_minimum_surplus_In_USD
+            );
+           
             uint required_minimum_surplus_In_ETH= required_minimum_surplus_In_USD / oracle.getPrice();
+              console.log(
+                "required_minimum_surplus_In_ETH -> ",required_minimum_surplus_In_ETH
+            );
             
             uint deficit_USD = uint(deficit_or_surplus * -1);
+             console.log(
+                "deficit_USD -> ",deficit_USD
+            );
             uint deficit_ETH = deficit_USD / oracle.getPrice();     
             uint added_surplus = msg.value - deficit_ETH; //adjusting the surplus by subtracting deficit
+            console.log(
+                "added_surplus -> ",added_surplus);
             uint minDepositAmount = deficit_USD + required_minimum_surplus_In_ETH;
 
             if ( added_surplus < required_minimum_surplus_In_ETH) {
                 revert InitialCollateralRatioError("STC : Initial Collateral ratio Not Met. Minimum is", minDepositAmount); 
             } 
-           uint256 initial_DepositorCoinAmount = added_surplus * oracle.getPrice() ;
+           uint256 initial_DepositorCoinAmount_USD = added_surplus * oracle.getPrice() ;
             
             depositorCoin = new DepositorCoin(
                     "Depositor Coin", 
                     "DPC", 
                     Depositor_Coin_LockTime,
                     msg.sender,
-                    initial_DepositorCoinAmount
+                    initial_DepositorCoinAmount_USD
                 );
             return;
         } 
